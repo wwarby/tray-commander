@@ -1,0 +1,31 @@
+import { app, Tray } from 'electron';
+import { menubar } from 'menubar';
+import * as path from 'path';
+import commandLineArgs from 'command-line-args';
+import 'reflect-metadata';
+import { container } from './inversify.config';
+import { IConfigService } from './services/interfaces/i-config.service';
+import { IMenuManagerService } from './services/interfaces/i-menu-manager.service';
+import { TYPES } from './types';
+import { IOptions } from './models/i-options';
+import 'source-map-support/register';
+import { IErrorHandlerService } from './services/interfaces/i-error-handler.service';
+import { IIconService } from './services/interfaces/i-icon.service';
+
+// Quit if there is already an instance of the app running
+if (!app.requestSingleInstanceLock()) { app.quit(); }
+
+app.on('ready', async () => {
+  try {
+    container.bind<IOptions>(TYPES.IOptions).toConstantValue(commandLineArgs([{ name: 'config', alias: 'c', type: String, defaultOption: true }]) as IOptions);
+    container.bind<Electron.App>(TYPES.App).toConstantValue(app);
+    const config = container.get<IConfigService>(TYPES.IConfigService);
+    await config.init();
+    const tray = new Tray(path.resolve(config.assetsPath, 'icon.png'));
+    await container.get<IIconService>(TYPES.IIconService).init();
+    await container.get<IMenuManagerService>(TYPES.IMenuManagerService).init(tray);
+    menubar({ tray, preloadWindow: true, showOnRightClick: true });
+  } catch (e: unknown) {
+    await container.get<IErrorHandlerService>(TYPES.IErrorHandlerService).handleError(e as Error);
+  }
+});

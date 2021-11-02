@@ -1,0 +1,83 @@
+{
+  "name": "tray-commander",
+  "version": "1.0.0",
+  "description": "A utility app to create a system-tray icon with a customisable list of commands to execute scripts or programs",
+  "main": "src/index.js",
+  "scripts": {
+    "setup": "npm i -g rimraf npm-check-updates && choco install gsudo && npm i",
+    "build": "./node_modules/.bin/tsc",
+    "start": "sudo electron src/index.js",
+    "start-prod": "./dist/TrayCommander.exe",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "postinstall": "electron-builder install-app-deps",
+    "ncu": "ncu -u npm i"
+  },
+  "build": {
+    "productName": "Tray Commander",
+    "appId": "com.mobsterlobster.tray-commander",
+    "files": [
+      "src/**/*.js",
+      "src/**/*.map",
+      "src/assets",
+      "node_modules"
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ]
+    },
+    "portable": {
+      "artifactName": "TrayCommander.exe",
+      "requestExecutionLevel": "admin"
+    },
+    "directories": {
+      "output": "dist",
+      "buildResources": "src/assets"
+    },
+    "extraResources": [
+      {
+        "from": "src/assets",
+        "to": "assets"
+      }
+    ]
+  },
+  "author": "William Warby",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "4.1.2",
+    "command-line-args": "5.2.0",
+    "dayjs": "1.10.7",
+    "fs-extra": "10.0.0",
+    "inversify": "6.0.1",
+    "lodash": "4.17.21",
+    "lodash-es": "4.17.21",
+    "md5": "2.3.0",
+    "menubar": "9.1.0",
+    "reflect-metadata": "0.1.13",
+    "rxjs": "7.4.0",
+    "source-map-support": "0.5.20",
+    "taskcc-nssm": "0.1.1",
+    "valid-url": "1.0.9",
+    "windows-system-icon": "0.0.8"
+  },
+  "devDependencies": {
+    "@types/command-line-args": "5.2.0",
+    "@types/lodash": "4.14.176",
+    "@types/md5": "2.3.1",
+    "@types/node": "16.11.6",
+    "@typescript-eslint/eslint-plugin": "5.2.0",
+    "@typescript-eslint/parser": "5.2.0",
+    "electron": "15.3.0",
+    "electron-builder": "22.13.1",
+    "electron-packager": "15.4.0",
+    "eslint": "8.1.0",
+    "eslint-plugin-import": "2.25.2",
+    "eslint-plugin-jsdoc": "37.0.0",
+    "eslint-plugin-prefer-arrow": "1.2.3",
+    "eslint-plugin-rxjs": "4.0.0",
+    "npm-check-updates": "11.8.5",
+    "sudo-prompt": "9.2.1",
+    "typescript": "4.4.4"
+  }
+}

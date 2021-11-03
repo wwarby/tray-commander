@@ -10,6 +10,8 @@ import { TYPES } from '../types';
 import { IErrorHandlerService } from './interfaces/i-error-handler.service';
 import { IWindowsServiceManagerService } from './interfaces/i-windows-service-manager.service';
 import { WindowsServiceState } from '../models/windows-service-state';
+import { filter } from 'rxjs';
+import { debounce } from 'lodash';
 
 @injectable()
 export class MenuManagerService implements IMenuManagerService {
@@ -17,6 +19,7 @@ export class MenuManagerService implements IMenuManagerService {
   private _tray?: Electron.CrossProcessExports.Tray;
   private _menu?: Electron.Menu;
   private _isOpen = false;
+  private readonly debouncedBuild = debounce(this.build, 300);
 
   public constructor(
     @inject(TYPES.IConfigService) private readonly config: IConfigService,
@@ -24,9 +27,8 @@ export class MenuManagerService implements IMenuManagerService {
     @inject(TYPES.IErrorHandlerService) private readonly errorHandler: IErrorHandlerService,
     @inject(TYPES.IWindowsServiceManagerService) private readonly windowsServiceManager: IWindowsServiceManagerService
   ) {
-    // noinspection JSDeprecatedSymbols
-    config.menuOptions$.subscribe(async () => this.build());
-    windowsServiceManager.services$.subscribe(async () => this.build());
+    config.menuOptions$.subscribe(async () => this.debouncedBuild());
+    windowsServiceManager.services$.pipe(filter(x => !!x)).subscribe(async () => this.debouncedBuild());
   }
 
   private static isUrl(s: string) {
@@ -38,7 +40,7 @@ export class MenuManagerService implements IMenuManagerService {
 
   public async init(tray: Electron.CrossProcessExports.Tray): Promise<void> {
     this._tray = tray;
-    await this.build();
+    await this.debouncedBuild();
   }
 
   private async build(): Promise<void> {
@@ -69,21 +71,26 @@ export class MenuManagerService implements IMenuManagerService {
   }
 
   // eslint-disable-next-line @typescript-eslint/ban-types
-  private async wrap(fn: Function) {
-    try {
-      fn();
-    } catch (e: unknown) {
-      await this.errorHandler.handleError(e as Error);
-    }
+  private clickWrap(fn: Function) {
+    return () => {
+      try {
+        fn();
+      } catch (e: unknown) {
+        // noinspection JSIgnoredPromiseFromCall
+        this.errorHandler.handleError(e as Error);
+      }
+    };
   }
 
   // eslint-disable-next-line @typescript-eslint/ban-types
-  private async wrapAsync<T>(fn: () => Promise<T>) {
-    try {
-      await fn();
-    } catch (e: unknown) {
-      await this.errorHandler.handleError(e as Error);
-    }
+  private clickWrapAsync<T>(fn: () => Promise<T>) {
+    return async () => {
+      try {
+        await fn();
+      } catch (e: unknown) {
+        await this.errorHandler.handleError(e as Error);
+      }
+    };
   }
 
   private async getMenuItem(optionConfig: IMenuOptionConfig) {
@@ -101,11 +108,12 @@ export class MenuManagerService implements IMenuManagerService {
       for (const child of optionConfig.children) { menuItem.submenu.push(await this.getMenuItem(child)); }
     }
 
+    // Command
     if (optionConfig.cmd) {
       if (MenuManagerService.isUrl(optionConfig.cmd)) {
-        menuItem.click = async () => this.wrapAsync(async () => shell.openExternal(optionConfig.cmd as string));
+        menuItem.click = this.clickWrapAsync(async () => shell.openExternal(optionConfig.cmd as string));
       } else {
-        menuItem.click = async () => this.wrap(() => spawn(optionConfig.cmd as string, optionConfig.args || [], {
+        menuItem.click = this.clickWrap(() => spawn(optionConfig.cmd as string, optionConfig.args || [], {
           shell: true,
           detached: true,
           cwd: optionConfig.startIn,
@@ -116,46 +124,53 @@ export class MenuManagerService implements IMenuManagerService {
       }
     }
 
+    // Windows Service management
     if (optionConfig.serviceName) {
       const service = this.windowsServiceManager.services[optionConfig.serviceName];
       if (service) {
         switch (service.state) {
           case WindowsServiceState.Stopped:
-            menuItem.label = `${optionConfig.label} (Stopped) » Start`;
+            menuItem.label = `${optionConfig.label} (Stopped)`;
             menuItem.icon = await this.iconService.getIcon('windows-service-stopped');
-            menuItem.click = async () => this.wrapAsync(async () => this.windowsServiceManager.start(service.name));
             break;
           case WindowsServiceState.StartPending:
             menuItem.label = `${optionConfig.label} (Starting)`;
             menuItem.icon = await this.iconService.getIcon('windows-service-pending');
-            menuItem.enabled = false;
             break;
           case WindowsServiceState.StopPending:
             menuItem.label = `${optionConfig.label} (Stopping)`;
             menuItem.icon = await this.iconService.getIcon('windows-service-pending');
-            menuItem.enabled = false;
             break;
           case WindowsServiceState.Running:
-            menuItem.label = `${optionConfig.label} (Running) » Stop`;
+            menuItem.label = `${optionConfig.label} (Running)`;
             menuItem.icon = await this.iconService.getIcon('windows-service-running');
-            menuItem.click = async () => this.wrapAsync(async () => this.windowsServiceManager.stop(service.name));
             break;
           case WindowsServiceState.ContinuePending:
             menuItem.label = `${optionConfig.label} (Resuming)`;
             menuItem.icon = await this.iconService.getIcon('windows-service-pending');
-            menuItem.enabled = false;
             break;
           case WindowsServiceState.PausePending:
             menuItem.label = `${optionConfig.label} (Pausing)`;
             menuItem.icon = await this.iconService.getIcon('windows-service-pending');
-            menuItem.enabled = false;
             break;
           case WindowsServiceState.Paused:
-            menuItem.label = `${service.displayName} (Paused) » Resume`;
+            menuItem.label = `${service.displayName} (Paused)`;
             menuItem.icon = await this.iconService.getIcon('windows-service-paused');
-            menuItem.click = async () => this.wrapAsync(async () => this.windowsServiceManager.start(service.name));
             break;
         }
+
+        menuItem.submenu = [];
+        if ([WindowsServiceState.Stopped, WindowsServiceState.Paused].includes(service.state || WindowsServiceState.Unknown)) {
+          menuItem.submenu.push({ label: 'Start', click: this.clickWrapAsync(async () => this.windowsServiceManager.start(service.name)) });
+        }
+        if ([WindowsServiceState.Running, WindowsServiceState.Paused].includes(service.state || WindowsServiceState.Unknown)) {
+          menuItem.submenu.push({ label: 'Stop', click: this.clickWrapAsync(async () => this.windowsServiceManager.stop(service.name)) });
+        }
+        if (service.state !== WindowsServiceState.Stopped) {
+          menuItem.submenu.push({ label: 'Kill', click: this.clickWrapAsync(async () => this.windowsServiceManager.kill(service.name)) });
+        }
+      } else {
+        console.warn(`Service not found: ${optionConfig.serviceName}`);
       }
     }
 

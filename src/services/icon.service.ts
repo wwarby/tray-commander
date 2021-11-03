@@ -23,7 +23,7 @@ export class IconService implements IIconService {
   public constructor(
     @inject(TYPES.IConfigService) private readonly config: IConfigService
   ) {
-    this._extractedIconsPath = path.resolve(config.dataPath, 'ExtractedIcons');
+    this._extractedIconsPath = path.resolve(config.dataPath, 'extracted-icons');
   }
 
   public async init() {
@@ -39,8 +39,10 @@ export class IconService implements IIconService {
       key = optionsOrKey;
     } else {
       key = optionsOrKey.icon || '';
+      // Replace macros
+      if (key.toLowerCase() === '[cmd]') { key = optionsOrKey.cmd || ''; }
       // Get some common icon keys by inference from the command
-      if (!key && (optionsOrKey.cmd?.toLowerCase() === 'powershell' || optionsOrKey.cmd?.includes('powershell.exe'))) { key = 'powershell'; }
+      if (!key && /(?:powershell|pwsh)(?:\.exe|$)/.test(optionsOrKey.cmd || '')) { key = 'powershell'; }
     }
 
     // Attempt to use a built-in icon
@@ -52,11 +54,16 @@ export class IconService implements IIconService {
     // Attempt to extract an icon from the referenced file or program
     if (fs.existsSync(key)) {
       const extractPath = path.resolve(this._extractedIconsPath, `${md5(key)}@2x.png`);
+      // If icon was previously extracted, use it
+      if (fs.existsSync(extractPath)) {
+        this._extractedIcons[key] = extractPath;
+        return this._extractedIcons[key];
+      }
       // Ensure directory exists
       if (!fs.existsSync(this._extractedIconsPath)) { fs.mkdirSync(this._extractedIconsPath, { recursive: true }); }
       console.log(`Extracting icon from ${chalk.yellow(key)}`);
-      await generateIcons([{ inputFilePath: key, outputFilePath: extractPath, outputFormat: 'Png' }], true);
       this._extractedIcons[key] = extractPath;
+      await generateIcons([{ inputFilePath: key, outputFilePath: extractPath, outputFormat: 'Png' }], true);
       return this._extractedIcons[key];
     }
 

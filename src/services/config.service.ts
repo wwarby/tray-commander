@@ -25,7 +25,7 @@ export class ConfigService implements IConfigService {
   private readonly _assetsPath = path.resolve(app.getAppPath().replace(/[/\\][^/\\]+\.asar/, ''), 'assets');
 
   public constructor(@inject(TYPES.IOptions) private readonly options: IOptions, @inject(TYPES.App) app: Electron.App) {
-    this.dataPath = path.resolve(app.getPath('userData'), 'TrayCommander');
+    this.dataPath = path.resolve(app.getPath('userData'), 'tray-commander');
   }
 
   private _configPath!: string;

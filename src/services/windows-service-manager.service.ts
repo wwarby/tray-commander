@@ -15,7 +15,7 @@ import chalk from 'chalk';
 @injectable()
 export class WindowsServiceManagerService implements IWindowsServiceManagerService {
 
-  private readonly _services$ = new BehaviorSubject<{ [name: string]: IWindowsService | undefined }>({});
+  private readonly _services$ = new BehaviorSubject<{ [name: string]: IWindowsService | undefined } | undefined>(undefined);
   private readonly _pollingInterval = 2000;
   private _pollingHandle?: NodeJS.Timer;
 
@@ -38,7 +38,7 @@ export class WindowsServiceManagerService implements IWindowsServiceManagerServi
 
   private _services: { [name: string]: IWindowsService | undefined } = {};
 
-  public get services() { return this._services$.value; }
+  public get services() { return this._services$.value || {}; }
 
   public get services$() { return this._services$.asObservable(); }
 
@@ -46,8 +46,31 @@ export class WindowsServiceManagerService implements IWindowsServiceManagerServi
     await this.switchToState(name, WindowsServiceState.Running);
   }
 
-  public async stop(name: string) {
+  public async stop(name: string, timeout = 2000) {
     await this.switchToState(name, WindowsServiceState.Stopped);
+    // If the service doesn't stop itself gracefully, task-kill it
+    setTimeout(async () => {
+      try {
+        const service = await this.getService(name);
+        if (service.state === WindowsServiceState.Stopped) { return; }
+        await new Promise<void>((resolve, reject) => {
+          exec(`taskkill /PID ${service.pid} /f`, function (error, stdout, stderr) {
+            if (error || stderr) { reject(error || stderr); } else { resolve(); }
+          });
+        });
+      } catch (e) {
+        await this.errorHandlerService.handleError(e as Error);
+      }
+    }, timeout);
+  }
+
+  public async kill(name: string) {
+    const service = await this.getService(name);
+    await new Promise<void>((resolve, reject) => {
+      exec(`taskkill /PID ${service.pid} /f`, function (error, stdout, stderr) {
+        if (error || stderr) { reject(error || stderr); } else { resolve(); }
+      });
+    });
   }
 
   private async update(): Promise<void> {

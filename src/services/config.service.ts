@@ -20,6 +20,7 @@ export class ConfigService implements IConfigService {
   public readonly dataPath: string;
   private _watcher?: FSWatcher;
   private readonly _menuOptions$ = new BehaviorSubject<IMenuOptionConfig[]>([]);
+  private readonly _serviceGroups$ = new BehaviorSubject<{ [groupName: string]: string[] }>({});
   private readonly _defaultSettings = {} as ISettings;
   private readonly _settings$ = new BehaviorSubject<ISettings>(this._defaultSettings);
   private readonly _assetsPath = path.resolve(app.getAppPath().replace(/[/\\][^/\\]+\.asar/, ''), 'assets');
@@ -41,6 +42,10 @@ export class ConfigService implements IConfigService {
   public get settings() { return this._settings$.value; }
 
   public get settings$() { return this._settings$.asObservable(); }
+
+  public get serviceGroups() { return this._serviceGroups$.value; }
+
+  public get serviceGroups$() { return this._serviceGroups$.asObservable(); }
 
   public async init() {
     await this.setConfigPath(this.options.config || path.resolve(os.homedir(), '.tray-commander.json'));
@@ -88,6 +93,7 @@ export class ConfigService implements IConfigService {
     try {
       const config = JSON.parse(await fsAsync.readFile(this.configPath, 'utf-8')) || {} as IConfig;
       this._settings$.next(assign(this._defaultSettings, config.settings || {}));
+      this._serviceGroups$.next(config.serviceGroups || {});
       this._menuOptions$.next(config.menu || []);
     } catch (e: unknown) {
       const result = await dialog.showMessageBox({

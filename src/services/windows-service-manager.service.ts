@@ -43,18 +43,25 @@ export class WindowsServiceManagerService implements IWindowsServiceManagerServi
   public get services$() { return this._services$.asObservable(); }
 
   public async start(name: string) {
-    await this.switchToState(name, WindowsServiceState.Running);
+    if ((await this.getService(name)).state === WindowsServiceState.Running) { return; }
+    await this.serviceControl(name, 'start');
+  }
+
+  public async restart(name: string, timeout = 2000) {
+    await this.stop(name, timeout);
+    await this.start(name);
   }
 
   public async stop(name: string, timeout = 2000) {
-    await this.switchToState(name, WindowsServiceState.Stopped);
+    if ((await this.getService(name)).state === WindowsServiceState.Stopped) { return; }
+    await this.serviceControl(name, 'stop');
     // If the service doesn't stop itself gracefully, task-kill it
     setTimeout(async () => {
       try {
         const service = await this.getService(name);
         if (service.state === WindowsServiceState.Stopped) { return; }
         await new Promise<void>((resolve, reject) => {
-          exec(`taskkill /PID ${service.pid} /f`, function (error, stdout, stderr) {
+          exec(`taskkill /PID ${service.pid} /f`, function(error, stdout, stderr) {
             if (error || stderr) { reject(error || stderr); } else { resolve(); }
           });
         });
@@ -67,10 +74,17 @@ export class WindowsServiceManagerService implements IWindowsServiceManagerServi
   public async kill(name: string) {
     const service = await this.getService(name);
     await new Promise<void>((resolve, reject) => {
-      exec(`taskkill /PID ${service.pid} /f`, function (error, stdout, stderr) {
+      exec(`taskkill /PID ${service.pid} /f`, function(error, stdout, stderr) {
         if (error || stderr) { reject(error || stderr); } else { resolve(); }
       });
     });
+  }
+
+  public getGroup(groupName: string): IWindowsService[] {
+    return this.config.serviceGroups[groupName].map(x => {
+      if (!this.services[x]) { console.warn(`Service not found: ${groupName}`); }
+      return this.services[x];
+    }).filter(x => x) as IWindowsService[];
   }
 
   private async update(): Promise<void> {
@@ -79,7 +93,7 @@ export class WindowsServiceManagerService implements IWindowsServiceManagerServi
     const names = Object.keys(this._services);
     let changed = false;
     await new Promise<void>((resolve, reject) => {
-      exec('sc queryex state=all', function (error, stdout, stderr) {
+      exec('sc queryex state=all', function(error, stdout, stderr) {
         if (error || stderr) {
           reject(error || stderr);
         } else {
@@ -107,7 +121,7 @@ export class WindowsServiceManagerService implements IWindowsServiceManagerServi
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
     return new Promise<IWindowsService>((resolve, reject) => {
-      exec(`sc queryex "${name}"`, function (error, stdout, stderr) {
+      exec(`sc queryex "${name}"`, function(error, stdout, stderr) {
         if (error || stderr) {
           reject(error || stderr);
         } else {
@@ -119,10 +133,9 @@ export class WindowsServiceManagerService implements IWindowsServiceManagerServi
     });
   }
 
-  private async switchToState(name: string, state: WindowsServiceState) {
-    if ((await this.getService(name)).state === state) { return; }
+  private async serviceControl(name: string, state: string) {
     return new Promise<IWindowsService>((resolve, reject) => {
-      exec(`sc ${state === WindowsServiceState.Stopped ? 'stop' : 'start'} "${name}"`, function (error, stdout, stderr) {
+      exec(`sc ${state} "${name}"`, function(error, stdout, stderr) {
         if (error || stderr) { reject(error || stderr); }
       });
     });

@@ -113,7 +113,8 @@ export class MenuManagerService implements IMenuManagerService {
       if (MenuManagerService.isUrl(optionConfig.cmd)) {
         menuItem.click = this.clickWrapAsync(async () => shell.openExternal(optionConfig.cmd as string));
       } else {
-        menuItem.click = this.clickWrap(() => spawn(optionConfig.cmd as string, optionConfig.args || [], {
+        const cmdArgs = (optionConfig.args || []).map(x => x.includes(' ') && !x.startsWith('"') && !x.startsWith('\'') ? `"${x}"` : x);
+        menuItem.click = this.clickWrap(() => spawn(optionConfig.cmd as string, cmdArgs, {
           shell: true,
           detached: true,
           cwd: optionConfig.startIn,
@@ -121,6 +122,43 @@ export class MenuManagerService implements IMenuManagerService {
           env: optionConfig.env || undefined,
           stdio: 'ignore'
         }));
+      }
+    }
+
+    // Windows Service control
+    if (optionConfig.serviceControl) {
+      if (!optionConfig.serviceGroup) {
+        console.warn(`Service group not configured for service control command: ${optionConfig.serviceControl}`);
+      } else if (!this.config.serviceGroups[optionConfig.serviceGroup]) {
+        console.warn(`Service group ${optionConfig.serviceGroup} not found`);
+      } else {
+        const services = this.windowsServiceManager.getGroup(optionConfig.serviceGroup);
+        // Hide the menu item if there are no services
+        if (!services.length) { menuItem.visible = false; }
+        switch (optionConfig.serviceControl) {
+          case 'start':
+            // Hide the start services menu item if no services are in a startable state
+            if (services.every(x => [WindowsServiceState.Running].includes(x?.state || WindowsServiceState.Unknown))) { menuItem.visible = false; }
+            menuItem.icon = await this.iconService.getIcon('start');
+            menuItem.click = this.clickWrapAsync(async () => {
+              await Promise.all(this.windowsServiceManager.getGroup(optionConfig.serviceGroup || '').map(async x => this.windowsServiceManager.start(x.name)));
+            });
+            break;
+          case 'restart':
+            menuItem.icon = await this.iconService.getIcon('restart');
+            menuItem.click = this.clickWrapAsync(async () => {
+              await Promise.all(this.windowsServiceManager.getGroup(optionConfig.serviceGroup || '').map(async x => this.windowsServiceManager.restart(x.name)));
+            });
+            break;
+          case 'stop':
+            // Hide the start services menu item if no services are in a stoppable state
+            if (services.every(x => [WindowsServiceState.Stopped].includes(x?.state || WindowsServiceState.Unknown))) { menuItem.visible = false; }
+            menuItem.icon = await this.iconService.getIcon('stop');
+            menuItem.click = this.clickWrapAsync(async () => {
+              await Promise.all(this.windowsServiceManager.getGroup(optionConfig.serviceGroup || '').map(async x => this.windowsServiceManager.stop(x.name)));
+            });
+            break;
+        }
       }
     }
 
@@ -178,3 +216,4 @@ export class MenuManagerService implements IMenuManagerService {
   }
 
 }
+

@@ -8,7 +8,12 @@ export interface IWindowsServiceManagerService {
 
   start(name: string): Promise<void>;
 
+  restart(name: string): Promise<void>;
+
   stop(name: string): Promise<void>;
 
   kill(name: string): Promise<void>;
+
+  getGroup(groupName: string): IWindowsService[];
+
 }

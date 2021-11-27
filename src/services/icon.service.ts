@@ -27,7 +27,7 @@ export class IconService implements IIconService {
   }
 
   public async init() {
-    const assetIconsPath = path.resolve(this.config.assetsPath, 'icons');
+    const assetIconsPath = path.resolve(this.config.assetsPath, 'menu-icons');
     const assetIconFiles = (await fsAsync.readdir(assetIconsPath)).filter(x => path.extname(x).toLowerCase() === '.png')
       .map(x => ({ name: path.parse(x).name.replace(/@\d(?:\.\d)?x/i, '').toLowerCase(), path: path.resolve(assetIconsPath, x) }));
     this._assetIcons = mapValues(keyBy(assetIconFiles, 'name'), 'path') as { [key: string]: string };

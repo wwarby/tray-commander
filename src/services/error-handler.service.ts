@@ -1,15 +1,19 @@
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 import path from 'path';
-import { app, dialog, shell } from 'electron';
+import { dialog, shell } from 'electron';
 import dayjs from 'dayjs';
 import fs, { promises as fsAsync } from 'fs';
 import { IErrorHandlerService } from './interfaces/i-error-handler.service';
+import { TYPES } from '../types';
+import { IConfigService } from './interfaces/i-config.service';
 
 @injectable()
 export class ErrorHandlerService implements IErrorHandlerService {
 
+  public constructor(@inject(TYPES.IConfigService) private readonly config: IConfigService) { }
+
   public async handleError(e: Error) {
-    const logPath = path.resolve(app.getPath('appData'), 'TrayCommander', 'logs', `Error_${dayjs().format('YYYY-MM-DD_hh-mm-ss')}.log`);
+    const logPath = path.resolve(this.config.dataPath, 'logs', `error-${dayjs().format('YYYY-MM-DD_hh-mm-ss')}.log`);
     const logDir = path.dirname(logPath);
     if (!fs.existsSync(logDir)) { fs.mkdirSync(logDir, { recursive: true }); }
     await fsAsync.writeFile(logPath, `${e.message}\r\n\r\n${e.stack}`);

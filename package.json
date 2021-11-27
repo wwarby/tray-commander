@@ -23,9 +23,7 @@
       "node_modules"
     ],
     "win": {
-      "target": [
-        "portable"
-      ]
+      "target": [ "portable" ]
     },
     "portable": {
       "artifactName": "TrayCommander.exe",

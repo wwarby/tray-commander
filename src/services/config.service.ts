@@ -4,7 +4,6 @@ import path from 'path';
 import { app, dialog, shell } from 'electron';
 import { inject, injectable } from 'inversify';
 import { IConfigService } from './interfaces/i-config.service';
-import * as os from 'os';
 import { IOptions } from '../models/i-options';
 import { BehaviorSubject } from 'rxjs';
 import { TYPES } from '../types';
@@ -26,7 +25,7 @@ export class ConfigService implements IConfigService {
   private readonly _assetsPath = path.resolve(app.getAppPath().replace(/[/\\][^/\\]+\.asar/, ''), 'assets');
 
   public constructor(@inject(TYPES.IOptions) private readonly options: IOptions, @inject(TYPES.App) app: Electron.App) {
-    this.dataPath = path.resolve(app.getPath('userData'), 'tray-commander');
+    this.dataPath = app.getPath('userData');
   }
 
   private _configPath!: string;
@@ -45,10 +44,8 @@ export class ConfigService implements IConfigService {
 
   public get serviceGroups() { return this._serviceGroups$.value; }
 
-  public get serviceGroups$() { return this._serviceGroups$.asObservable(); }
-
   public async init() {
-    await this.setConfigPath(this.options.config || path.resolve(os.homedir(), '.tray-commander.json'));
+    await this.setConfigPath(this.options.config || path.resolve(this.dataPath, '.tray-commander.json'));
   }
 
   public async editMenuOptions() {

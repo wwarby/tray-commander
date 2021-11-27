@@ -1,9 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Tray Commander</title>
-</head>
-<body>
-</body>
+  <head>
+    <meta charset="UTF-8">
+    <title>Tray Commander</title>
+    <style>
+      body {
+        display: flex;
+        flex-direction: column;
+        padding: 2rem;
+        align-items: center;
+        background: #222;
+        color: #fff;
+        font-family: Arial, sans-serif;
+        text-align: center;
+        user-select: none !important;
+      }
+
+      img { width: 128px; }
+
+      h1 { margin: 1rem 0 0; font-size: 15px; cursor: default; }
+
+      p { margin: .5rem 0 0; font-size: 12px; opacity: .7; cursor: default; }
+    </style>
+  </head>
+  <body>
+    <img alt="Icon" src="assets/icon.png" />
+    <h1>Tray Commander</h1>
+    <p>Right click on the tray icon for access</p>
+  </body>
 </html>

@@ -24,7 +24,7 @@ app.on('ready', async () => {
     const tray = new Tray(path.resolve(config.assetsPath, 'icon.png'));
     await container.get<IIconService>(TYPES.IIconService).init();
     await container.get<IMenuManagerService>(TYPES.IMenuManagerService).init(tray);
-    menubar({ tray, preloadWindow: true, showOnRightClick: true, browserWindow: { show: false } });
+    menubar({ tray, preloadWindow: true, showOnRightClick: true, browserWindow: { resizable: false, roundedCorners: true, darkTheme: true, width: 280, height: 280 } });
   } catch (e: unknown) {
     await container.get<IErrorHandlerService>(TYPES.IErrorHandlerService).handleError(e as Error);
   }

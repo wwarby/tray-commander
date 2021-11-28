@@ -23,7 +23,9 @@
       "node_modules"
     ],
     "win": {
-      "target": [ "portable" ]
+      "target": [
+        "portable"
+      ]
     },
     "portable": {
       "artifactName": "TrayCommander.exe",
@@ -34,7 +36,10 @@
       "buildResources": "src/assets"
     },
     "extraResources": [
-      { "from": "src/assets", "to": "assets" }
+      {
+        "from": "src/assets",
+        "to": "assets"
+      }
     ]
   },
   "author": "William Warby",

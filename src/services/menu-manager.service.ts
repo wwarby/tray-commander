@@ -57,7 +57,7 @@ export class MenuManagerService implements IMenuManagerService {
 
     if (menu.length) { menu.push({ type: 'separator' }); }
     menu.push({
-      label: 'Edit commands',
+      label: 'Edit Commands',
       click: async () => {
         try { return this.config.editMenuOptions(); } catch (e: unknown) { await this.errorHandler.handleError(e as Error); }
       }
@@ -199,13 +199,32 @@ export class MenuManagerService implements IMenuManagerService {
 
         menuItem.submenu = [];
         if ([WindowsServiceState.Stopped, WindowsServiceState.Paused].includes(service.state || WindowsServiceState.Unknown)) {
-          menuItem.submenu.push({ label: 'Start', click: this.clickWrapAsync(async () => this.windowsServiceManager.start(service.name)) });
+          menuItem.submenu.push({
+            label: 'Start',
+            click: this.clickWrapAsync(async () => this.windowsServiceManager.start(service.name)),
+            icon: await this.iconService.getIcon('start')
+          });
         }
         if ([WindowsServiceState.Running, WindowsServiceState.Paused].includes(service.state || WindowsServiceState.Unknown)) {
-          menuItem.submenu.push({ label: 'Stop', click: this.clickWrapAsync(async () => this.windowsServiceManager.stop(service.name)) });
+          menuItem.submenu.push({
+            label: 'Restart',
+            click: this.clickWrapAsync(async () => this.windowsServiceManager.restart(service.name)),
+            icon: await this.iconService.getIcon('restart')
+          });
+        }
+        if ([WindowsServiceState.Running, WindowsServiceState.Paused].includes(service.state || WindowsServiceState.Unknown)) {
+          menuItem.submenu.push({
+            label: 'Stop',
+            click: this.clickWrapAsync(async () => this.windowsServiceManager.stop(service.name)),
+            icon: await this.iconService.getIcon('stop')
+          });
         }
         if (service.state !== WindowsServiceState.Stopped) {
-          menuItem.submenu.push({ label: 'Kill', click: this.clickWrapAsync(async () => this.windowsServiceManager.kill(service.name)) });
+          menuItem.submenu.push({
+            label: 'Kill',
+            click: this.clickWrapAsync(async () => this.windowsServiceManager.kill(service.name)),
+            icon: await this.iconService.getIcon('kill')
+          });
         }
       } else {
         console.warn(`Service not found: ${optionConfig.serviceName}`);

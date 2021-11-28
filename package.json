@@ -34,10 +34,7 @@
       "buildResources": "src/assets"
     },
     "extraResources": [
-      {
-        "from": "src/assets",
-        "to": "assets"
-      }
+      { "from": "src/assets", "to": "assets" }
     ]
   },
   "author": "William Warby",

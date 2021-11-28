@@ -34,6 +34,8 @@ export class ConfigService implements IConfigService {
 
   public get assetsPath() { return this._assetsPath; }
 
+  public get indexPath() { return path.resolve(this.assetsPath, 'index.html'); }
+
   public get menuOptions() { return this._menuOptions$.value; }
 
   public get menuOptions$() { return this._menuOptions$.asObservable(); }

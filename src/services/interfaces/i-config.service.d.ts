@@ -4,13 +4,14 @@ import { ISettings } from '../../models/i-settings';
 
 export interface IConfigService {
   readonly assetsPath: string;
-  configPath: string;
-  serviceGroups: { [groupName: string]: string[] };
+  readonly indexPath: string;
+  readonly configPath: string;
+  readonly serviceGroups: { [groupName: string]: string[] };
   readonly menuOptions: IMenuOptionConfig[];
   readonly menuOptions$: Observable<IMenuOptionConfig[]>;
   readonly settings: ISettings;
   readonly settings$: Observable<ISettings>;
-  dataPath: string;
+  readonly dataPath: string;
 
   editMenuOptions(): Promise<void>;
 
